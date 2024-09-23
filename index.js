@@ -50,6 +50,10 @@ async function sendEmail(receiverEmail, subject, message) {
   }
 }
 
+app.get('/', (req, res) => {
+  res.send('Hello, user!');
+});
+
 // Route to send OTP
 app.post('/send-otp', async (req, res) => {
   try {
