@@ -19,7 +19,6 @@ const SMTP_SERVER = process.env.SMTP_SERVER;
 const SMTP_PORT = parseInt(process.env.SMTP_PORT) || 587;
 const EMAIL_SENDER = process.env.EMAIL_SENDER;
 const EMAIL_PASSWORD = process.env.EMAIL_PASSWORD;
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN;
 
 // Create reusable transporter object using Gmail SMTP
 const transporter = nodemailer.createTransport({
@@ -33,25 +32,20 @@ const transporter = nodemailer.createTransport({
 });
 
 // Function to send email
-async function sendEmail(receiverEmail, subject, message, referer) {
-  if (referer && referer.startsWith(ALLOWED_ORIGIN)) {
-    const mailOptions = {
-      from: EMAIL_SENDER,
-      to: receiverEmail,
-      subject: subject,
-      text: message,
-    };
+async function sendEmail(receiverEmail, subject, message) {
+  const mailOptions = {
+    from: EMAIL_SENDER,
+    to: receiverEmail,
+    subject: subject,
+    text: message,
+  };
 
-    try {
-      await transporter.sendMail(mailOptions);
-      console.log(`Email successfully sent to ${receiverEmail}`);
-      return true;
-    } catch (error) {
-      console.error(`Error sending email: ${error}`);
-      return false;
-    }
-  } else {
-    console.error("Unauthorized origin");
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`Email successfully sent to ${receiverEmail}`);
+    return true;
+  } catch (error) {
+    console.error(`Error sending email: ${error}`);
     return false;
   }
 }
@@ -72,12 +66,11 @@ app.post('/send-otp', async (req, res) => {
     userSessions[email] = otp;
 
     // Email content
-    const subject = "Your OTP Code";
+    const subject = "Your OTP Code For ";
     const message = `Your OTP code is ${otp}. Please use this code within 10 minutes.`;
 
     // Send the email
-    const referer = req.headers.referer;
-    if (await sendEmail(email, subject, message, referer)) {
+    if (await sendEmail(email, subject, message)) {
       return res.status(200).json({ message: "OTP sent successfully" });
     } else {
       return res.status(500).json({ error: "Failed to send OTP. Please try again later." });
@@ -110,17 +103,16 @@ app.post('/verify-otp', (req, res) => {
   }
 });
 
-
+// Route to send a regular email
 app.post('/sendmail', async (req, res) => {
   const { to, subject, body } = req.body;
-  const referer = req.headers.referer;
 
   if (!to || !subject || !body) {
     return res.status(400).json({ error: "Missing parameters" });
   }
 
   try {
-    const emailSent = await sendEmail(to, subject, body, referer);
+    const emailSent = await sendEmail(to, subject, body);
 
     if (emailSent) {
       res.status(200).json({ message: "Email sent successfully" });
@@ -132,7 +124,6 @@ app.post('/sendmail', async (req, res) => {
     res.status(500).json({ error: `Internal server error: ${error.message}` });
   }
 });
-
 
 // Error handling middleware for unexpected errors
 app.use((err, req, res, next) => {
